@@ -21,15 +21,14 @@ Contributions are welcome as long as they are sane.
 - "s-doering", https://github.com/s-doering
 
 ### CXF
-This plugin uses the apache-cxf tools to do the actual work.
+This plugin uses the xjc tool to do the actual work.
 
 ### Tasks
 
 | Name | Description | Dependecy |
 | ---- | ----------- | --------- |
-| wsdl2java | Generate java source from wsdl-files | CompileJava depends on wsdl2java |
-| ~~xsd2java~~ | ~~Generate java source from xsd-files~~ Removed in version 0.8 | ~~CompileJava depends on xsd2java~~ |
-| deleteGeneratedSources | Delete all generated sources | Clean depends on deleteGeneratedSources |
+| xsd2java | Generate java source from wsdl-files | CompileJava depends on xsd2java |
+| deleteGeneratedXsdSources | Delete all generated sources | Clean depends on deleteGeneratedXsdSources |
 
 ## Usage
 
@@ -47,36 +46,59 @@ To use this plugin, you must
             mavenCentral()
         }
         dependencies {
-            classpath 'no.nils:xsd2java:0.8'
+            classpath 'no.nils:xsd2java:0.6'
         }
     }
     apply plugin: 'no.nils.xsd2java'
 
+### Plugin options
 
-
- 
-
-### Options for xsd2java (deprecated, separate plugin coming soon)
-This will not work for version 0.8+!
 | Option | Default value | Description |
 | ------ | ------------- | ----------- |
-| generatedXsdDir | "generatedsources/src/main/java" | Destination directory for generated sources |
-| xsdsToGenerate | null | 2-d array consisting of 2 or 3 values in each array: 1. xsd-file(input), 2. package for the generated sources, 3. (optional) a map containing additional options for the xjc task |
-| encoding | platform default encoding | Set the encoding name for generated sources, such as EUC-JP or UTF-8. |
+| jaxbVersion | "+" | Controls the JAXB version used to generate code.
+| deleteGeneratedSourcesOnClean | true | If you want to keep the generated sources under version control, set this option to false. |
 
-Example setting of options:
 
-    xsd2java{
-        encoding = 'utf-8'
-        xsdsToGenerate = [
-            ["src/main/resources/xsd/CustomersAndOrders.xsd", 'no.nils.xsd2java.sample', [header: false] /* optional map */]
-        ]
-        generatedXsdDir = file("generatedsources/xsd2java")
+Example of specifying another JAXB version:
+
+    xsd2javaExt {
+        jaxbVersion = "0.11.0"
     }
 
 
+Example of retaining the generated sources on clean:
+
+    xsd2javaExt {
+        deleteGeneratedSourcesOnClean = false
+    }
+    
+### Options for xsd2java
+| Option | Default value | Description |
+| ------ | ------------- | ----------- |
+| generatedXsdDir | "generatedsources/src/main/java" | Destination directory for generated sources sources to be placed. |
+| xsdDir | src/main/resources | Define the xsd files directory to support incremental build. This means that the task will be up-to-date if nothing in this directory has changed. |
+| wsdlsToGenerate | empty | This is the main input to the plugin that defines the xsds to process. It is a list of arguments where each argument is a list of arguments to process a xsd-file. The xsd-file with full path is the last argument. The array can be supplied with the same options as described for the jaxb plugin(https://jaxb.java.net/2.2.4/docs/xjc.html). |
+| encoding | platform default encoding | Set the encoding name for generated sources, such as EUC-JP or UTF-8. |
+| locale | Locale.getDefault() | The locale for the generated sources – especially the JavaDoc. This might be necessary to prevent differing sources due to several development environments. |
+| stabilizeAndMergeObjectFactory| false | If multiple XSDs target the same package, merge their ObjectFactory.java classes |
+
+Example setting of options:
+
+    xsd2java {
+        generatedXsdDir = file("generatedsources/xsd2java")  // target directory for generated source coude
+        xsdDir = file("src/main/resources/myXsdFiles") // define to support incremental build
+        xsdsToGenerate = [   //  2d-array of xsds and xjc-parameters
+                    ['src/main/resources/xsd/firstxsd.xsd'],
+                    ['-p','no.nils.xsd2java.sample','-verbose','src/main/resources/xsd/secondxsd.xsd']
+            ]
+        locale = Locale.GERMANY
+        encoding = 'utf-8'
+    }
+
+
+
 ## Complete example usage
-This is a an example of a working build.gradle for a java project. You can also take a look at this projects submodule "consumer" which has a working wsdl compiling.
+This is a an example of a working build.gradle for a java project. You can also take a look at this projects submodule "consumer" which has a working xsd compiling.
 
     buildscript{
         repositories{
@@ -84,7 +106,7 @@ This is a an example of a working build.gradle for a java project. You can also 
             mavenCentral()
         }
         dependencies {
-            classpath 'no.nils:wsdl2java:0.8'
+            classpath 'no.nils:xsd2java:0.6'
         }
     }
 
@@ -99,19 +121,15 @@ This is a an example of a working build.gradle for a java project. You can also 
         testCompile 'junit:junit:+'
     }
 
-    wsdl2java{
-        wsdlsToGenerate = [
-                ["$projectDir/src/main/resources/wsdl/stockqoute.wsdl"]
-        ]
-        generatedWsdlDir = file("$projectDir/generatedsources")
-        wsdlDir = file("$projectDir/src/main/resources/wsdl")
-        cxfVersion = "3.0.1"
-    }
-    xsd2java{
-        xsdsToGenerate = [
-            ["$projectDir/src/main/resources/xsd/CustomersAndOrders.xsd", 'no.nils.xsd2java.sample']
-        ]
-        generatedXsdDir = file("$projectDir/generatedsources/xsd2java")
+    xsd2java {
+        generatedXsdDir = file("generatedsources/xsd2java")  // target directory for generated source coude
+        xsdDir = file("src/main/resources/myXsdFiles") // define to support incremental build
+        xsdsToGenerate = [   //  2d-array of xsds and xjc-parameters
+                    ['src/main/resources/xsd/firstxsd.xsd'],
+                    ['-p','no.nils.xsd2java.sample','-verbose','src/main/resources/xsd/secondxsd.xsd']
+            ]
+        locale = Locale.GERMANY
+        encoding = 'utf-8'
     }
 
 ### A notice on multi-module projects
